@@ -5,7 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
 
-const SITE = '__SITE_URL__'; // remplacé par tools/set-domain.js
+// Adresse publique du site (aperçus WhatsApp og:image / og:url) : lue dans js/config.js (siteUrl), à défaut un repère à remplacer
+const cfgSrc = fs.readFileSync(path.join(root, 'js', 'config.js'), 'utf8');
+const SITE = ((cfgSrc.match(/siteUrl:\s*'([^']*)'/) || [])[1] || '__SITE_URL__').replace(/\/+$/, '');
 
 // [fichier, titre, description, script de page, entrée de menu active]
 const PUBLIC = [

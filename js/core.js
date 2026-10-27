@@ -189,13 +189,16 @@
 
   // ---------- partage ----------
   // Liens entre le site public et le dashboard (qui peuvent être déployés à deux adresses différentes)
+  // En local (localhost) on ignore ces adresses : les liens restent dans le dossier de travail.
   const trimUrl = (u) => String(u || '').replace(/\/+$/, '');
-  MPP.dashLink = (page) => (C.dashUrl ? trimUrl(C.dashUrl) + '/' + (page || 'connexion.html') : MPP.root + 'admin/' + (page || 'connexion.html'));
-  MPP.siteLink = (page) => (C.siteUrl ? trimUrl(C.siteUrl) + '/' + (page || '') : /\/admin\//.test(location.pathname) ? MPP.root + (page || '') : null);
+  const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const siteU = LOCAL ? '' : trimUrl(C.siteUrl), dashU = LOCAL ? '' : trimUrl(C.dashUrl);
+  MPP.dashLink = (page) => (dashU ? dashU + '/' + (page || 'connexion.html') : MPP.root + 'admin/' + (page || 'connexion.html'));
+  MPP.siteLink = (page) => (siteU ? siteU + '/' + (page || '') : /\/admin\//.test(location.pathname) ? MPP.root + (page || '') : null);
 
   MPP.pageUrl = (hash) => {
     const file = location.pathname.split('/').pop() || 'index.html';
-    const u = MPP.cfg.siteUrl ? MPP.cfg.siteUrl.replace(/\/$/, '') + '/' + file : location.href.split('#')[0].split('?')[0];
+    const u = siteU ? siteU + '/' + file : location.href.split('#')[0].split('?')[0];
     return u + (hash || '');
   };
   MPP.shareHtml = (title, hash) =>

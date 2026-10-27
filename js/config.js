@@ -7,6 +7,6 @@ window.MPP_CONFIG = {
   supabaseKey: '',
   // Déploiement séparé du site public et du dashboard (deux adresses, même base de données) :
   // renseigner ici l'adresse de chacun (sans « / » final). Vide = tout est servi depuis la même adresse.
-  siteUrl: '',   // ex. https://mppe-site.vercel.app   (aussi utilisée pour les liens de partage)
-  dashUrl: ''    // ex. https://mppe-dash.vercel.app
+  siteUrl: 'https://mppe-site.vercel.app',   // aussi utilisée pour les liens de partage WhatsApp
+  dashUrl: 'https://mppe-dash.vercel.app'
 };
