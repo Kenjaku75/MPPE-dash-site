@@ -1,0 +1,110 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Scénario dashboard (mode démo)</title>
+<body>
+<pre id="out">en cours…</pre>
+<script>
+// Scénario automatisé du dashboard : paramètres, contenus, équipe, sondages, modération, journal d'audit.
+const results = []; const log = (name, ok, info) => results.push({ name, ok: !!ok, info: info == null ? '' : String(info).slice(0, 180) });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fr = document.createElement('iframe'); fr.style.cssText = 'width:1000px;height:800px'; document.body.appendChild(fr);
+const D = () => fr.contentDocument, W = () => fr.contentWindow;
+async function waitFor(fn, ms = 6000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { const v = fn(); if (v) return v; } catch (e) { /* ignore */ } await sleep(100); } return null; }
+async function open(path, who) {
+  if (who) sessionStorage.setItem('mpp_demo_session_v1', JSON.stringify({ access_token: 'demo', user: { id: 'u-' + who, email: who + '@demo.mpp' } })); else sessionStorage.removeItem('mpp_demo_session_v1');
+  const [p, h] = path.split('#');
+  fr.src = '../' + p + '?t=' + Math.random() + (h ? '#' + h : ''); await new Promise((r) => { fr.onload = r; });
+  await waitFor(() => D().querySelector('#content, #app') && !D().querySelector('#content .loading, #app .loading') && (D().querySelector('#content, #app').innerHTML.length > 150), 8000);
+  await sleep(400);
+}
+const $ = (s) => D().querySelector(s);
+const type = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+const submit = (f) => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+const rpc = (name, args) => W().MPP.sb.rpc(name, args).then((r) => r.data);
+
+(async () => {
+  try {
+    localStorage.clear(); sessionStorage.clear();
+
+    // A. Paramètres : modifier le numéro du gagnant et le seuil de signalements
+    await open('admin/parametres.html', 'bureau');
+    let f = $('[data-sec="tirage"]'); type(f.numero_gagnant, '+226 70 11 22 33'); submit(f);
+    await sleep(800);
+    await open('admin/parametres.html', 'bureau');
+    log('paramètres : le numéro du gagnant est enregistré', $('[data-sec="tirage"]').numero_gagnant.value === '+226 70 11 22 33', $('[data-sec="tirage"]').numero_gagnant.value);
+    f = $('[data-sec="campagne"]'); type(f.campagne_debut, '2026-11-02'); await sleep(200);
+    log('paramètres : la fin se propose à début + 2 jours', f.campagne_fin.value === '2026-11-04', f.campagne_fin.value);
+    // le bureau ne peut pas toucher aux paramètres réservés au président (2FA)
+    const hacked = await W().MPP.sb.from('parametres').update({ valeur: false }).eq('cle', 'require_2fa');
+    log('paramètres : require_2fa refusé au bureau', !!hacked.error, hacked.error && hacked.error.message);
+
+    // B. Contenus : ajouter une question à la FAQ
+    await open('admin/contenus.html#faq', 'president');
+    await waitFor(() => $('[data-add]')); click($('[data-add]')); await waitFor(() => $('.modal form'));
+    f = $('.modal form'); type(f.question, 'Question ajoutée par le test ?'); type(f.reponse, 'Réponse du test.'); submit(f);
+    log('contenus : question de FAQ ajoutée', await waitFor(() => /Question ajoutée par le test/.test($('#pane').innerText)), '');
+    await open('faq.html'); log('contenus : visible sur la page FAQ publique', /Question ajoutée par le test/.test($('#app').innerText), '');
+
+    // C. Équipe : le président modifie sa fiche
+    await open('admin/equipe.html', 'president');
+    const row = Array.from(D().querySelectorAll('.drag')).find((x) => /Protégé/.test(x.innerText)); click(row.querySelector('[data-edit]'));
+    await waitFor(() => $('.modal form')); f = $('.modal form'); type(f.poste, 'Président (test)'); submit(f);
+    log("équipe : le président modifie sa fiche", await waitFor(() => /Président \(test\)/.test($('#list').innerText)), '');
+    await open('equipe.html'); log("équipe : changement visible sur la page publique", /Président \(test\)/.test($('#app').innerText), '');
+    // un autre membre : tentative de modification de la fiche du président par RPC
+    await open('admin/equipe.html', 'bureau');
+    const pres = (await W().MPP.sb.from('membres_bureau').select('*').eq('est_president', true)).data[0];
+    const refused = await rpc('team_save', { p: { id: pres.id, poste: 'Piraté' } });
+    log('équipe : modification refusée au bureau côté serveur', refused.ok === false, refused.message);
+
+    // D. Sondage : création
+    await open('admin/sondages.html', 'bureau');
+    click($('#new')); await waitFor(() => $('.modal form')); f = $('.modal form'); type(f.question, 'Sondage créé par le test ?'); type(f.options, 'Oui\nNon\nPeut-être'); submit(f);
+    log('sondages : sondage créé et ouvert', await waitFor(() => /Sondage créé par le test/.test($('#list').innerText)), '');
+    await open('sondages.html'); log('sondages : visible côté public', /Sondage créé par le test/.test($('#app').innerText), '');
+
+    // E. Modération : 2 signalements → à examiner → rétablir
+    await open('index.html');
+    const sent = await rpc('send_message', { p_device: 'appareil-test-0001', p_content: 'Message à modérer' });
+    await rpc('report_content', { p_type: 'chat', p_id: sent.id, p_device: 'appareil-test-0002' });
+    const rep2 = await rpc('report_content', { p_type: 'chat', p_id: sent.id, p_device: 'appareil-test-0003' });
+    log('modération : masqué après 2 signalements', rep2.masque === true, JSON.stringify(rep2));
+    await open('admin/chat.html#examiner', 'moderateur');
+    log("modération : visible dans « À examiner »", /Message à modérer/.test($('#pane').innerText), '');
+    click($('[data-restore]')); await sleep(800);
+    const after = (await W().MPP.sb.from('chat_messages').select('*').eq('id', sent.id)).data[0];
+    log('modération : rétabli, marqué comme tel', after.statut === 'visible' && after.retabli === true, after.statut + '/' + after.retabli);
+    const again = await rpc('report_content', { p_type: 'chat', p_id: sent.id, p_device: 'appareil-test-0004' });
+    log('modération : un message rétabli ne peut plus être signalé', again.ok === false, again.message);
+    // suppression par le modérateur
+    const del = await W().MPP.sb.from('chat_messages').update({ statut: 'supprime', motif_suppression: 'test' }).eq('id', sent.id);
+    await open('chat.html'); log('modération : « Message supprimé par la modération » côté public', /Message supprimé par la modération/.test($('#msgs').innerText) && !/Message à modérer/.test($('#msgs').innerText), '');
+
+    // F. Idées : changement de statut par le bureau
+    await open('admin/idees.html', 'bureau');
+    const sel = $('[data-st]'); const idee = sel.dataset.st; type(sel, 'retenue'); await sleep(700);
+    await open('idees.html'); log('idées : statut « Retenue » visible au public', /Retenue/.test($('#list').innerText), '');
+
+    // G. Journal : le président voit les tentatives refusées
+    await open('admin/audit.html', 'president');
+    log("audit : tentatives refusées journalisées", /Tentative refusée/.test($('#list').innerText), '');
+    log("audit : tirages / modifications tracés", /parametres\.update|chat_messages\.update/.test($('#list').innerText), '');
+
+    // H. Avis : réponse publique du bureau
+    await open('admin/avis.html', 'bureau');
+    click($('[data-rep]')); await waitFor(() => $('.modal form')); type($('.modal form').t, 'Merci pour votre avis, nous en tenons compte.'); submit($('.modal form'));
+    await sleep(900); await open('avis.html');
+    log('avis : réponse du bureau publiée avec le poste', /Merci pour votre avis, nous en tenons compte/.test($('#app').innerText) && /Réponse du bureau/.test($('#app').innerText), '');
+
+    // I. Équipe : membre ajouté par le bureau, avec ordre
+    await open('admin/equipe.html', 'bureau');
+    click($('#add')); await waitFor(() => $('.modal form')); f = $('.modal form'); type(f.prenom, 'Nouveau'); type(f.nom, 'Membre'); type(f.poste, 'Chargé de test'); submit(f);
+    log('équipe : membre ajouté', await waitFor(() => /Chargé de test/.test($('#list').innerText)), '');
+    await open('equipe.html'); log('équipe : membre visible côté public', /Nouveau Membre/.test($('#app').innerText), '');
+  } catch (e) { log('EXCEPTION', false, e && (e.stack || e.message)); }
+  const bad = results.filter((r) => !r.ok);
+  document.getElementById('out').textContent = JSON.stringify({ total: results.length, echecs: bad.length, resultats: results });
+})();
+</script>
+</body>

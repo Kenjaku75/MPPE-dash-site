@@ -1,0 +1,12 @@
+backend
+tests
+tools
+secours
+LISEZMOI.md
+lancer-demo.bat
+_headers
+.git
+purehtml
+/*.js
+!/sw.js
+/admin/*.js

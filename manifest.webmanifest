@@ -1,0 +1,16 @@
+{
+  "name": "MPPE — Plateforme de campagne",
+  "short_name": "MPPE",
+  "description": "Site de campagne du Mouvement Patriotique pour le Progrès Estudiantin : tirage au sort, boîte à idées, sondages, chat anonyme.",
+  "lang": "fr",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbf9f3",
+  "theme_color": "#0f7a3a",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,15 @@
+node_modules/
+.vercel/
+.env
+.env.*
+*.log
+Thumbs.db
+
+# Fichiers parasites générés dans le dossier par un outil externe (copies « purehtml » et .js quasi vides)
+purehtml/
+/*.js
+!/sw.js
+/admin/*.js
+/tests/e2e.js
+/tests/e2e-admin.js
+/secours/*.js

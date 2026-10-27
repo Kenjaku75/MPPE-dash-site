@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPPE — Informations (page de secours)</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0F7A3A">
+<!--
+  PAGE DE SECOURS (cahier des charges §22) — à héberger SÉPARÉMENT et gratuitement du site principal
+  (par exemple un autre projet Cloudflare Pages, Netlify ou GitHub Pages).
+  Elle ne dépend d'aucun serveur : on modifie à la main les quelques lignes ci-dessous, puis on republie.
+-->
+<style>
+  :root { --green: #0f7a3a; --gold: #f2b705; --red: #d91e18; --ink: #111a14; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 17px/1.55 "Segoe UI", system-ui, sans-serif; background: #fbf9f3; color: var(--ink); }
+  .stripe { height: 6px; background: linear-gradient(90deg, var(--red) 33.3%, var(--gold) 33.3% 66.6%, var(--green) 66.6%); }
+  main { max-width: 640px; margin: 0 auto; padding: 22px 16px 60px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  .alert { background: #fff5d2; border: 1px solid #ecd27a; border-radius: 12px; padding: 12px 14px; margin: 14px 0; font-size: .95rem; }
+  .card { background: #fff; border: 1px solid #e7e2d4; border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: #66756b; }
+  .winner { font-size: 2rem; font-weight: 800; color: #0a5a2b; margin: 0 0 8px; }
+  .phone { display: inline-block; background: var(--gold); color: #1a1400; font-weight: 800; font-size: 1.3rem; padding: 12px 18px; border-radius: 14px; text-decoration: none; }
+  small { color: #66756b; }
+</style>
+</head>
+<body>
+<div class="stripe"></div>
+<main>
+  <h1>MPPE — Mouvement Patriotique pour le Progrès Estudiantin</h1>
+  <small>La force de la jeunesse, l'avenir du Faso.</small>
+  <div class="alert">Le site principal est momentanément indisponible. Voici les informations essentielles, mises à jour à la main par le bureau.</div>
+
+  <section class="card">
+    <h2>Gagnant du jour</h2>
+    <!-- ▼▼ À MODIFIER À LA MAIN À CHAQUE TIRAGE ▼▼ -->
+    <p class="winner" id="gagnant">Pas encore de gagnant annoncé</p>
+    <p id="date-gagnant"><small>Tirage du jour : à annoncer</small></p>
+    <!-- ▲▲ ▲▲ -->
+    <p>Si vous êtes le gagnant du jour, contactez le numéro ci-dessous et présentez-vous avec une pièce justificative (carte d'étudiant ou CNIB) pour prouver votre identité et recevoir votre repas gratuit à la cantine.</p>
+    <a class="phone" href="tel:+22606014444">+226 06014444</a>
+  </section>
+
+  <section class="card">
+    <h2>Parking gratuit</h2>
+    <!-- ▼▼ À MODIFIER À LA MAIN ▼▼ -->
+    <p><b>Jours :</b> à annoncer<br><b>Lieu :</b> à annoncer<br><b>Ouverture :</b> 7 h<br><b>Places :</b> les 100 premiers arrivés chaque jour, avec la carte d'étudiant.</p>
+    <!-- ▲▲ ▲▲ -->
+  </section>
+
+  <section class="card">
+    <h2>Contact du bureau</h2>
+    <p>WhatsApp de la secrétaire générale : <a href="https://wa.me/22674820674">+226 74 82 06 74</a></p>
+    <small>Site de campagne du MPPE, indépendant de l'administration de l'UTM.</small>
+  </section>
+</main>
+</body>
+</html>

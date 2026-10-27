@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>Cadre de test</title>
+<style>body{margin:0;background:#888}iframe{border:0;background:#fff;display:block;margin:0 auto}</style>
+<script>
+const q = new URLSearchParams(location.search);
+document.write('<iframe src="../' + (q.get('u') || 'index.html') + '" style="width:' + (q.get('w') || 390) + 'px;height:' + (q.get('h') || 1500) + 'px"></iframe>');
+</script>

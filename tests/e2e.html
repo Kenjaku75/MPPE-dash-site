@@ -1,0 +1,126 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Scénario de bout en bout (mode démo)</title>
+<body>
+<pre id="out">en cours…</pre>
+<script>
+// Scénario automatisé : parcours public et dashboard dans un iframe (mode démo). Résultat dans #out (JSON).
+const results = []; const log = (name, ok, info) => results.push({ name, ok: !!ok, info: info == null ? '' : String(info).slice(0, 160) });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fr = document.createElement('iframe'); fr.style.cssText = 'width:420px;height:800px'; document.body.appendChild(fr);
+const D = () => fr.contentDocument, W = () => fr.contentWindow;
+async function waitFor(fn, ms = 6000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { const v = fn(); if (v) return v; } catch (e) { /* ignore */ } await sleep(100); } return null; }
+async function open(path, who) {
+  if (who) sessionStorage.setItem('mpp_demo_session_v1', JSON.stringify({ access_token: 'demo', user: { id: 'u-' + who, email: who + '@demo.mpp' } })); else sessionStorage.removeItem('mpp_demo_session_v1');
+  fr.src = '../' + path + '?t=' + Math.random(); await new Promise((r) => { fr.onload = r; });
+  await waitFor(() => D().querySelector('#app') && !D().querySelector('#app .loading') && D().querySelector('#app').innerHTML.length > 200, 8000);
+  await sleep(300);
+}
+const $ = (s) => D().querySelector(s);
+const type = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+const submit = (f) => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+(async () => {
+  try {
+    localStorage.clear(); sessionStorage.clear();
+
+    // 1. Inscription au tirage
+    await open('inscription.html'); await sleep(3500);
+    let f = $('#f'); type(f.nom, 'Testeur'); type(f.prenom, 'Alice'); type(f.filiere, 'Informatique'); type(f.annee, 'Licence 2'); type(f.matricule, 'UTM9001'); f.consent.checked = true; submit(f);
+    log('inscription : succès affiché', await waitFor(() => /C'est fait/.test($('#f') ? $('#f').innerText : '')), $('#f') && $('#f').innerText);
+
+    // 2. Même matricule refusé
+    await open('inscription.html'); await sleep(3500);
+    f = $('#f'); type(f.nom, 'Autre'); type(f.prenom, 'Personne'); type(f.filiere, 'Gestion'); type(f.annee, 'Licence 1'); type(f.matricule, 'utm9001'); f.consent.checked = true; submit(f);
+    log('inscription : doublon de matricule refusé', await waitFor(() => /déjà inscrit/.test($('#msg').innerText)), $('#msg').innerText);
+
+    // 3. Sans consentement : le navigateur bloque (validation) → pas de message serveur
+    await open('inscription.html'); await sleep(3500);
+    f = $('#f'); type(f.nom, 'Sans'); type(f.prenom, 'Consentement'); type(f.filiere, 'Droit'); type(f.annee, 'Master 1'); type(f.matricule, 'UTM9002'); submit(f);
+    await sleep(300); log('inscription : consentement obligatoire', !f.checkValidity() && f.consent.required, 'checkValidity=' + f.checkValidity());
+
+    // 4. Promesse de vote : page distincte, sans mention du tirage
+    await open('soutenir.html');
+    log('promesse : aucune mention du tirage ni du repas', !/tirage|repas/i.test($('#app').innerText), '');
+    await open('inscription.html');
+    log('tirage : aucun lien vers la promesse dans le formulaire', !$('#f').parentElement.innerHTML.includes('soutenir.html'), '');
+
+    // 5. Chat : message normal, puis numéro refusé
+    await open('chat.html');
+    const txt = $('#txt'); type(txt, 'Bonjour à tous depuis le test'); submit($('#form'));
+    log('chat : message publié', await waitFor(() => /Bonjour à tous depuis le test/.test($('#msgs').innerText)), '');
+    type($('#txt'), 'appelle moi au 70 12 34 56'); submit($('#form'));
+    log('chat : numéro de téléphone refusé', await waitFor(() => !$('#warn').hidden && /numéros de téléphone/.test($('#warn').innerText)), $('#warn').innerText);
+    type($('#txt'), 'espèce de c0nn4rd'); submit($('#form'));
+    log('chat : insulte refusée', await waitFor(() => /termes interdits/.test($('#warn').innerText)), $('#warn').innerText);
+
+    // 6. Idées : like puis dislike
+    await open('idees.html');
+    const idea = $('.idea'); const before = Number(idea.querySelector('.score').textContent);
+    click(idea.querySelector('.vbtn.up'));
+    await waitFor(() => Number($('.idea .score').textContent) !== before);
+    const afterUp = Number(D().querySelector('.idea .score').textContent);
+    log('idées : like pris en compte', afterUp === before + 1 || afterUp === before + 1, before + ' → ' + afterUp);
+    click(D().querySelector('.idea .vbtn.down')); await sleep(500);
+    log('idées : changement en dislike', Number(D().querySelector('.idea .score').textContent) === before - 1, D().querySelector('.idea .score').textContent);
+
+    // 7. Idée refusée si elle contient un contact
+    $('#add').open = true; const fi = $('#f'); type(fi.titre, 'Super idée de test'); type(fi.description, 'Écrivez-moi sur whatsapp pour en parler'); submit(fi);
+    log('idées : contact refusé à la saisie', await waitFor(() => /WhatsApp/.test($('#msg').innerText)), $('#msg').innerText);
+
+    // 8. Avis : ouvert (27 octobre = derniers jours)
+    await open('avis.html');
+    log("avis : zone ouverte en fin de mois", !!$('#f'), $('#app').innerText.slice(0, 60));
+    if ($('#f')) {
+      click($('.stars[data-k="note"] .star[data-n="4"]')); type($('#f').commentaire, 'Beau travail, continuez'); submit($('#f'));
+      await sleep(1500); await waitFor(() => /Merci/.test($('#app').innerText));
+      log('avis : envoyé et confirmé', /Merci !/.test($('#app').innerText), $('#app').innerText.slice(0, 80));
+    }
+
+    // 9. Sondage
+    await open('sondages.html');
+    click($('[data-poll] input[type=radio]')); submit($('[data-poll] form'));
+    log('sondage : résultats affichés après réponse', await waitFor(() => $('.res-row')), '');
+
+    // 10. Dashboard : tirage par le bureau
+    await open('admin/tirage.html', 'bureau');
+    log('tirage : bouton disponible', !!$('#go'), '');
+    click($('#go')); await waitFor(() => D().querySelector('.modal [data-r="1"]')); click(D().querySelector('.modal [data-r="1"]'));
+    const win = await waitFor(() => D().querySelector('.modal .winner-name'));
+    const winnerName = win ? win.textContent : '';
+    log('tirage : gagnant désigné', !!winnerName, winnerName);
+    await open('index.html');
+    log("accueil : gagnant du jour publié + bandeau d'appel", D().body.innerText.includes(winnerName) && !!D().querySelector('.winner-banner'), (D().querySelector('.winner-banner') || {}).innerText);
+    await open('gagnant.html');
+    log('page gagnant : nom et numéro visibles', D().body.innerText.includes(winnerName) && D().body.innerText.includes('06014444'), '');
+
+    // 11. Modération : signaler 2 fois → masqué, rétablir → plus signalable
+    await open('admin/chat.html', 'moderateur');
+    const delBtn = D().querySelector('[data-del]');
+    log('modération : le modérateur voit les actions', !!delBtn, '');
+    // 12. Dashboard : le bureau ne peut pas modifier le président
+    await open('admin/equipe.html', 'bureau');
+    const pres = Array.from(D().querySelectorAll('.drag')).find((x) => /Protégé/.test(x.innerText));
+    log('équipe : fiche du président protégée (boutons désactivés)', !!pres && pres.querySelector('[data-edit]').disabled && pres.querySelector('[data-del]').disabled, '');
+    // 13. Promesses : président seulement
+    await open('admin/promesses.html', 'bureau'); log('promesses : refusé au bureau', /Accès refusé/.test($('#content').innerText), '');
+    await open('admin/promesses.html', 'president'); log('promesses : visible par le président', /Promesses de vote/.test($('#content').innerText) && !!$('.tbl'), '');
+    // 14. Clôture
+    await open('admin/cloture.html', 'moderateur');
+    log('clôture : refusée au modérateur', /Accès refusé/.test($('#content').innerText), '');
+    await open('admin/cloture.html', 'bureau');   // un administrateur peut clôturer
+    log('clôture : page accessible à un administrateur', !!$('#cf'), '');
+    const cf = $('#cf'); type(cf.w, 'CLOTURER'); submit(cf);
+    await waitFor(() => D().querySelector('.modal [data-r="1"]'), 2500); const cm = D().querySelector('.modal [data-r="1"]'); if (cm) click(cm);
+    await sleep(1500); await open('admin/cloture.html', 'bureau');
+    log('clôture : campagne clôturée par un administrateur', /La campagne est clôturée/.test($('#content').innerText) && /Journal de suppression/.test($('#content').innerText), $('#content').innerText.slice(0, 90));
+    await open('inscription.html'); log('clôture : inscriptions closes', /closes/.test($('#app').innerText), '');
+    await open('gagnant.html'); log('clôture : page gagnant désactivée', /tirage est terminé/.test($('#app').innerText), '');
+    await open('index.html'); log('clôture : bandeau du gagnant retiré', !D().querySelector('.winner-banner'), '');
+  } catch (e) { log('EXCEPTION', false, e && (e.stack || e.message)); }
+  const bad = results.filter((r) => !r.ok);
+  document.getElementById('out').textContent = JSON.stringify({ total: results.length, echecs: bad.length, resultats: results });
+})();
+</script>
+</body>

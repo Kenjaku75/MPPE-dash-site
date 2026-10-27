@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sonde de test</title>
+<body>
+<pre id="out">en attente…</pre>
+<script>
+// Ouvre une session de démonstration puis charge la page demandée dans un iframe et rapporte son état.
+const q = new URLSearchParams(location.search);
+const who = q.get('who') || 'president';
+sessionStorage.setItem('mpp_demo_session_v1', JSON.stringify({ access_token: 'demo', user: { id: 'u-' + who, email: who + '@demo.mpp' } }));
+const f = document.createElement('iframe');
+f.style.cssText = 'width:' + (q.get('w') || 1000) + 'px;height:' + (q.get('h') || 900) + 'px;border:1px solid #999';
+const errors = [];
+f.addEventListener('load', () => {
+  try {
+    f.contentWindow.addEventListener('error', (e) => errors.push(e.message));
+    f.contentWindow.addEventListener('unhandledrejection', (e) => errors.push('promesse: ' + (e.reason && e.reason.message)));
+  } catch (e) { /* ignore */ }
+});
+f.src = '../' + q.get('u');
+document.body.appendChild(f);
+setTimeout(() => {
+  const d = f.contentDocument; const app = d.querySelector('#content') || d.querySelector('#app');
+  const txt = (app ? app.innerText : '').replace(/\s+/g, ' ').slice(0, 220);
+  const bad = /Erreur\.|Chargement impossible|Accès refusé|Compte non autorisé/.test(app ? app.innerText : '');
+  document.getElementById('out').textContent = JSON.stringify({ url: q.get('u'), who, loc: f.contentWindow.location.pathname.split('/').pop(), ok: !!app && !bad && !/^Chargement/.test(txt), errors, text: txt });
+}, +(q.get('wait') || 4000));
+</script>
+</body>
