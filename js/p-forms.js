@@ -21,6 +21,12 @@ MPP.page(async ({ sb, S, el, camp }) => {
   /* ---------------- Inscription au tirage ---------------- */
   async function inscription() {
     if (camp.closed) { el.innerHTML = closedBox('Les inscriptions sont closes'); return; }
+    // Activation du mode stand depuis le dashboard (#stand=…) : on l'enregistre puis on efface l'adresse
+    const hs = location.hash.match(/^#stand=(.+)$/);
+    if (hs) {
+      try { const o = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(hs[1]))))); if (o && o.id && o.code) MPP.store.set('stand', o); } catch (e) { /* ignore */ }
+      history.replaceState(null, '', location.pathname + location.search);
+    }
     let stand = MPP.store.get('stand', null);
     const draw = MPP.hhmm(S.heure_tirage || '12:00');
     el.innerHTML = head('Tirage au sort', 'Un repas de midi offert, chaque jour de la campagne.') + wrap(

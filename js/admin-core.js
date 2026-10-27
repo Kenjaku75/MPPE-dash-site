@@ -57,9 +57,9 @@
 
   function shell(me, current, sb) {
     const items = NAV.map((g) => ({ g: g.g, items: g.items.filter((it) => A.allowed(me.role, it[3])) })).filter((g) => g.items.length);
-    const side = '<aside class="side" id="side"><a class="s-brand" href="index.html"><img src="../assets/logo.svg" width="40" height="40" alt=""><span>MPPE<small>Dashboard</small></span></a>' +
+    const side = '<aside class="side" id="side"><a class="s-brand" href="index.html"><img src="' + MPP.root + 'assets/logo.svg" width="40" height="40" alt=""><span>MPPE<small>Dashboard</small></span></a>' +
       items.map((g) => '<div class="grp">' + g.g + '</div>' + g.items.map((it) => '<a class="s-link" href="' + it[0] + '.html"' + (current === it[0] ? ' aria-current="page"' : '') + '>' + icon(it[2]) + '<span>' + it[1] + '</span>' + (it[4] ? '<span class="s-badge" data-badge="' + it[4] + '" hidden></span>' : '') + '</a>').join('')).join('') +
-      '<a class="s-link" href="../index.html" target="_blank" style="margin-top:10px">' + icon('eye') + '<span>Voir le site</span></a>' +
+      (MPP.siteLink('index.html') ? '<a class="s-link" href="' + MPP.siteLink('index.html') + '" target="_blank" rel="noopener" style="margin-top:10px">' + icon('eye') + '<span>Voir le site</span></a>' : '') +
       '<div class="s-me"><b>' + esc(me.nom_affiche || me.email) + '</b><span>' + esc(A.ROLES[me.role]) + (me.poste ? ' · ' + esc(me.poste) : '') + '</span><button class="btn btn-sm btn-ghost-light" id="logout" type="button">' + icon('logout') + ' Se déconnecter</button></div></aside>';
     $('#app').innerHTML = (MPP.demo ? '<div class="demo-strip">Mode démo : données locales. <button type="button" id="reset">Réinitialiser la démo</button></div>' : '') +
       '<div class="main-top"><button type="button" id="burger" aria-label="Menu">' + icon('menu') + '</button><b>Dashboard MPPE</b><span></span></div><div class="side-bg" id="sbg"></div><div class="adm">' + side + '<main class="main" id="content"><div class="loading">Chargement…</div></main></div>';

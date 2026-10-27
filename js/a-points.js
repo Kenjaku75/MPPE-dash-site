@@ -20,7 +20,11 @@ MPP.admin.page({ nav: 'points', need: 'admin' }, async ({ sb, S, me, el }) => {
         if (!r.code_hash) throw new Error("Définissez d'abord le code de ce point.");
         const c = await MPP.confirm('Activer le mode stand « ' + r.nom + ' » sur cet appareil. Saisissez le code du point :', { input: 'Code', ok: 'Continuer' }); if (!c || c === true) return;
         const op = await MPP.confirm("Nom de l'opérateur (membre du bureau qui tient le stand) :", { input: 'Opérateur', ok: 'Activer' }); if (!op || op === true) return;
-        MPP.store.set('stand', { id: r.id, nom: r.nom, code: c, operateur: op }); location.href = '../inscription.html';
+        // Le mode stand se règle sur le SITE PUBLIC (autre adresse possible) : les infos passent dans le fragment de l'adresse,
+        // qui n'est jamais envoyé à un serveur, puis la page d'inscription les enregistre et efface l'adresse.
+        const dest = MPP.siteLink('inscription.html');
+        if (!dest) throw new Error("Renseignez l'adresse du site public (siteUrl) dans js/config.js pour activer le mode stand.");
+        location.href = dest + '#stand=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({ id: r.id, nom: r.nom, code: c, operateur: op })))));
       }
     }
   });

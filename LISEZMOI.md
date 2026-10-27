@@ -22,8 +22,20 @@ Double-cliquez sur **`lancer-demo.bat`** (nécessite Python). Le site s'ouvre su
    Les autres membres : les inviter, puis leur attribuer un rôle dans *Dashboard → Paramètres → Comptes du bureau*.
 3. **Configuration** — dans `js/config.js`, renseignez `supabaseUrl` et `supabaseKey` (clé *anon / publishable*, **jamais** la clé `service_role`).
    Tant que ces deux champs sont vides, le site reste en mode démo.
-4. **Hébergement gratuit** — publiez le dossier sur Cloudflare Pages, Netlify ou Vercel (glisser-déposer suffit) **sans** `tests/`, `tools/` ni `backend/`.
-   Puis `node tools/set-domain.js https://votre-adresse` pour les aperçus WhatsApp.
+4. **Hébergement : le site public et le dashboard sont deux déploiements séparés** (deux adresses), qui partagent la **même base de données**
+   (la même `supabaseUrl` / `supabaseKey` dans `js/config.js`). Sur Vercel, créez **deux projets à partir du même dépôt GitHub** :
+
+   | | Projet « site » | Projet « dashboard » |
+   |---|---|---|
+   | Root Directory | `./` | `./` |
+   | Application Preset | Other | Other |
+   | Build Command (Override) | `node tools/split.js site` | `node tools/split.js dash` |
+   | Output Directory (Override) | `dist/site` | `dist/dash` |
+
+   Une fois les deux adresses connues, renseignez-les dans `js/config.js` (`siteUrl` et `dashUrl`) : le site affiche alors le lien « Espace bureau »
+   vers le dashboard, et le dashboard le lien « Voir le site ». Le site ne contient **aucun code du dashboard**, et le dashboard n'est pas indexé.
+   Puis `node tools/set-domain.js https://adresse-du-site` pour les aperçus WhatsApp.
+   *Attention : en mode démo, chaque adresse garde ses données dans son propre navigateur ; le site et le dashboard ne se « parlent » qu'avec la vraie base Supabase.*
 5. **Avant le lancement** — renseignez dans *Paramètres* : dates de la campagne, horaires du chat, parking, représentant légal, hébergeur, contact public ;
    remplacez le logo provisoire (`assets/logo.svg`, puis régénérez les PNG avec les modèles de `tools/assets-src/`) ; faites la **séance de formation des modérateurs** ;
    hébergez la page `secours/` ailleurs (plan de secours §22) ; faites un test de charge ; utilisez le projet quelques jours avant le lancement (un projet gratuit inactif est mis en pause).
@@ -64,6 +76,7 @@ node --test tests/mock.test.js     # 20 tests de la logique métier (mode démo)
 node tools/build-pages.js          # régénère les 43 pages HTML
 node tools/make-seed.js            # régénère backend/seed.sql depuis js/seed-data.js
 node tools/set-domain.js <url>     # adresse publique pour les aperçus WhatsApp
+node tools/split.js site|dash      # produit dist/site ou dist/dash (déploiements séparés)
 ```
 
 `tests/e2e.html` rejoue un parcours complet (inscription, chat, idées, avis, tirage, clôture) dans un navigateur.

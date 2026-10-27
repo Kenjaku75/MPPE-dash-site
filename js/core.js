@@ -188,6 +188,11 @@
   };
 
   // ---------- partage ----------
+  // Liens entre le site public et le dashboard (qui peuvent être déployés à deux adresses différentes)
+  const trimUrl = (u) => String(u || '').replace(/\/+$/, '');
+  MPP.dashLink = (page) => (C.dashUrl ? trimUrl(C.dashUrl) + '/' + (page || 'connexion.html') : MPP.root + 'admin/' + (page || 'connexion.html'));
+  MPP.siteLink = (page) => (C.siteUrl ? trimUrl(C.siteUrl) + '/' + (page || '') : /\/admin\//.test(location.pathname) ? MPP.root + (page || '') : null);
+
   MPP.pageUrl = (hash) => {
     const file = location.pathname.split('/').pop() || 'index.html';
     const u = MPP.cfg.siteUrl ? MPP.cfg.siteUrl.replace(/\/$/, '') + '/' + file : location.href.split('#')[0].split('?')[0];
@@ -272,7 +277,7 @@
       '<div class="drawer-bg" hidden><aside class="drawer" id="drawer" aria-label="Menu"><div class="row between"><b>Menu</b><button class="icon-btn" type="button" data-close aria-label="Fermer">' + MPP.icon('x') + '</button></div>' +
       '<a class="d-link" href="' + link('index') + '">' + MPP.icon('home') + 'Accueil</a>' +
       items.map((g) => '<div class="d-group">' + g.g + '</div>' + g.items.map((it) => '<a class="d-link" href="' + link(it[0]) + '"' + (cur === it[0] ? ' aria-current="page"' : '') + '>' + MPP.icon(it[2]) + it[1] + '</a>').join('')).join('') +
-      '<div class="d-group">Équipe du bureau</div><a class="d-link" href="' + MPP.root + 'admin/connexion.html">' + MPP.icon('lock') + 'Espace bureau (dashboard)</a>' +
+      '<div class="d-group">Équipe du bureau</div><a class="d-link" href="' + MPP.dashLink() + '">' + MPP.icon('lock') + 'Espace bureau (dashboard)</a>' +
       '</aside></div>');
     const toggle = (open) => { drawer.hidden = !open; $('.menu-btn', header).setAttribute('aria-expanded', String(open)); document.body.classList.toggle('no-scroll', open); };
     $('.menu-btn', header).addEventListener('click', () => toggle(true));
@@ -298,7 +303,7 @@
       '<div><h4>Liens officiels de l\'UTM</h4><ul>' + links.slice(0, 4).map((l) => '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">' + esc(l.libelle) + '</a></li>').join('') + '<li><a href="' + link('liens') + '">Tous les liens utiles →</a></li></ul></div>' +
       '<div><h4>Contact</h4><ul><li><a href="' + esc(MPP.waLink(S)) + '" target="_blank" rel="noopener noreferrer">' + MPP.icon('chat') + ' WhatsApp du bureau</a></li><li><a href="' + link('rejoindre') + '">Rejoindre l\'équipe</a></li></ul><button type="button" class="btn btn-sm btn-ghost-light" id="install" hidden>Installer l\'application</button></div>' +
       '</div><p class="f-note">Site de campagne du MPPE, indépendant de l\'administration de l\'UTM.</p>' +
-      '<p class="f-legal">' + legal.map(([id, l]) => '<a href="' + link(id) + '">' + l + '</a>').join(' · ') + ' · <a href="' + MPP.root + 'admin/connexion.html">Espace bureau</a></p></div></footer>');
+      '<p class="f-legal">' + legal.map(([id, l]) => '<a href="' + link(id) + '">' + l + '</a>').join(' · ') + ' · <a href="' + MPP.dashLink() + '">Espace bureau</a></p></div></footer>');
     body.appendChild(footer);
 
     // bandeau du gagnant (fixe, en bas)

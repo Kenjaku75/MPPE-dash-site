@@ -7,7 +7,7 @@
   let S = {};
   try { S = await MPP.settings(true); } catch (e) { /* ignore */ }
   const next = (new URLSearchParams(location.search).get('next') || 'index.html').replace(/[^\w.\-]/g, '') || 'index.html';
-  const view = (inner) => { app.innerHTML = '<div class="login"><img src="../assets/logo.svg" width="72" height="72" alt=""><h1>Dashboard MPPE</h1><p class="muted center small" style="margin-top:0">Accès réservé au bureau et aux modérateurs.</p>' + inner + '</div>'; };
+  const view = (inner) => { app.innerHTML = '<div class="login"><img src="' + MPP.root + 'assets/logo.svg" width="72" height="72" alt=""><h1>Dashboard MPPE</h1><p class="muted center small" style="margin-top:0">Accès réservé au bureau et aux modérateurs.</p>' + inner + '</div>'; };
   const msg = (kind, html) => { const m = $('#m'); if (m) m.innerHTML = MPP.alert(kind, html); };
   const go = () => location.replace(next);
 

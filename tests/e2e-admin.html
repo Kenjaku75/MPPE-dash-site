@@ -12,6 +12,8 @@ const D = () => fr.contentDocument, W = () => fr.contentWindow;
 async function waitFor(fn, ms = 6000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { const v = fn(); if (v) return v; } catch (e) { /* ignore */ } await sleep(100); } return null; }
 async function open(path, who) {
   if (who) sessionStorage.setItem('mpp_demo_session_v1', JSON.stringify({ access_token: 'demo', user: { id: 'u-' + who, email: who + '@demo.mpp' } })); else sessionStorage.removeItem('mpp_demo_session_v1');
+  // ?split=1 : teste les deux déploiements séparés (dist/site et dist/dash, à produire avec tools/split.js)
+  if (new URLSearchParams(location.search).get('split') === '1') path = path.startsWith('admin/') ? 'dist/dash/' + path.slice(6) : 'dist/site/' + path;
   const [p, h] = path.split('#');
   fr.src = '../' + p + '?t=' + Math.random() + (h ? '#' + h : ''); await new Promise((r) => { fr.onload = r; });
   await waitFor(() => D().querySelector('#content, #app') && !D().querySelector('#content .loading, #app .loading') && (D().querySelector('#content, #app').innerHTML.length > 150), 8000);

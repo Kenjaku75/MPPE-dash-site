@@ -13,3 +13,6 @@ purehtml/
 /tests/e2e.js
 /tests/e2e-admin.js
 /secours/*.js
+
+# Dossiers produits par tools/split.js (déploiements séparés)
+dist/
