@@ -1,6 +1,8 @@
 /* Connexion au dashboard : e-mail + mot de passe, puis authentification à deux facteurs (code à 6 chiffres) */
 (async () => {
   const { esc, $ } = MPP;
+  // Type de lien reçu par e-mail (invitation, réinitialisation…) : à lire AVANT que la bibliothèque n'efface l'adresse
+  const mailType = ((location.hash.match(/[#&]type=(\w+)/) || [])[1]) || '';
   await MPP.ready;
   const sb = MPP.sb;
   const app = $('#app');
@@ -76,12 +78,20 @@
       (code) => verify(id, code), '<div class="qr-box"><img src="' + esc(totp.qr_code) + '" alt="QR code d\'activation" width="180" height="180"></div><p class="small center muted">Ou saisissez cette clé : <code>' + esc(totp.secret) + '</code></p>');
   }
 
-  sb.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      view('<h2 style="font-size:1.1rem;text-align:center">Nouveau mot de passe</h2><form id="p" novalidate><label class="field"><span>Nouveau mot de passe (12 caractères minimum)</span><input type="password" name="pw" required minlength="12" autocomplete="new-password"></label><div id="m"></div><button class="btn btn-block" type="submit">Enregistrer</button></form>');
-      $('#p').addEventListener('submit', async (e) => { e.preventDefault(); const { error } = await sb.auth.updateUser({ password: new FormData(e.target).get('pw') }); if (error) msg('error', esc(error.message)); else { msg('ok', 'Mot de passe mis à jour.'); setTimeout(afterLogin, 800); } });
-    }
-  });
+  // Choix du mot de passe : après une invitation (première connexion) ou une réinitialisation
+  function newPassword(first) {
+    view('<h2 style="font-size:1.1rem;text-align:center">' + (first ? 'Bienvenue ! Choisissez votre mot de passe' : 'Nouveau mot de passe') + '</h2><form id="p" novalidate><label class="field"><span>Mot de passe (12 caractères minimum)</span><input type="password" name="pw" required minlength="12" autocomplete="new-password"></label><div id="m"></div><button class="btn btn-block" type="submit">Enregistrer</button></form>');
+    $('#p').addEventListener('submit', async (e) => {
+      e.preventDefault(); const pw = new FormData(e.target).get('pw');
+      if (String(pw).length < 12) return msg('warn', '12 caractères minimum.');
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) msg('error', esc(error.message)); else { msg('ok', 'Mot de passe enregistré.'); setTimeout(afterLogin, 800); }
+    });
+  }
+  let pwShown = false;
+  sb.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY' && !pwShown) { pwShown = true; newPassword(false); } });
   const { data } = await sb.auth.getSession();
-  if (data && data.session) { try { await afterLogin(); } catch (e) { loginForm(); } } else loginForm();
+  if (data && data.session && mailType === 'invite') { pwShown = true; newPassword(true); }
+  else if (data && data.session) { try { await afterLogin(); } catch (e) { loginForm(); } }
+  else loginForm();
 })();

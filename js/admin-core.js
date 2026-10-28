@@ -3,6 +3,10 @@
   'use strict';
   const { esc, icon, $ } = MPP;
   const A = (MPP.admin = {});
+  // Un lien d'invitation ou de réinitialisation reçu par e-mail arrive sur la page d'accueil du dashboard avec ses jetons dans
+  // l'adresse : on le transmet tel quel à la page de connexion, qui fait choisir le mot de passe (avant tout traitement).
+  const redirecting = /[#&]type=(invite|recovery)\b/.test(location.hash) && !/connexion\.html/.test(location.pathname);
+  if (redirecting) location.replace('connexion.html' + location.hash);
   A.ROLES = { president: 'Président', admin: 'Administrateur', moderateur: 'Modérateur' };
 
   const NAV = [
@@ -20,6 +24,7 @@
   /** Point d'entrée : A.page({ nav: 'tirage', need: 'admin' }, async ({ sb, S, me, el }) => { ... }) */
   A.page = (opts, fn) => {
     const run = async () => {
+      if (redirecting) return;
       const app = $('#app');
       try {
         await MPP.ready;
