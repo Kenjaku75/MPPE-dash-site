@@ -833,17 +833,17 @@ begin
   if exists (select 1 from participants
               where (length(cle) >= 6 and abs(length(nom_cle) - length(cle)) <= 1 and levenshtein(nom_cle, cle) <= 1)
                  or (phon is not null and phon not in ('|') and phon_cle = phon)) then
-    st := 'a_verifier'; nt := nt || 'Nom très proche d''un participant existant';
+    st := 'a_verifier'; nt := array_append(nt, 'Nom très proche d''un participant existant'::text);
   end if;
   if v_canal = 'site' then
     select count(*) into v_nb from participants where device_hash = dh and canal = 'site';
-    if v_nb >= 3 then st := 'a_verifier'; nt := nt || 'Plus de 3 inscriptions depuis cet appareil'; end if;
+    if v_nb >= 3 then st := 'a_verifier'; nt := array_append(nt, 'Plus de 3 inscriptions depuis cet appareil'::text); end if;
   end if;
   v_ip := split_part(coalesce((nullif(current_setting('request.headers', true), '')::jsonb) ->> 'x-forwarded-for', ''), ',', 1);
   if v_ip <> '' then
     iph := private.hash('ip:' || btrim(v_ip));
     select count(*) into v_nb from participants where ip_hash = iph and created_at > now() - interval '1 day';
-    if v_nb >= 20 then nt := nt || 'Alerte : nombreuses inscriptions depuis la même adresse IP'; end if;
+    if v_nb >= 20 then nt := array_append(nt, 'Alerte : nombreuses inscriptions depuis la même adresse IP'::text); end if;
   end if;
   if v_car then st := case when st = 'valide' then 'verifie' else st end; end if;
 

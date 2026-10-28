@@ -4,7 +4,15 @@
   'use strict';
   const C = window.MPP_CONFIG || {};
   const base = ((document.currentScript && document.currentScript.src) || '').replace(/[^/]*$/, '');
-  const MPP = (window.MPP = { cfg: C, demo: !(C.supabaseUrl && C.supabaseKey), root: base.replace(/js\/$/, ''), sb: null });
+  // Mode démo : pas de clés renseignées, OU poste local (localhost) sauf si ?live=1 a été demandé (?live=0 pour revenir à la démo)
+  const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  let live = false;
+  try {
+    const q = (location.search.match(/[?&]live=([01])/) || [])[1];
+    if (q) localStorage.setItem('mpp_live', q);
+    live = localStorage.getItem('mpp_live') === '1';
+  } catch (e) { /* ignore */ }
+  const MPP = (window.MPP = { cfg: C, demo: !(C.supabaseUrl && C.supabaseKey) || (isLocalHost && !live), root: base.replace(/js\/$/, ''), sb: null });
 
   // ---------- chargement des dépendances ----------
   const ver = (((document.currentScript && document.currentScript.src) || '').match(/[?&]v=([\w.-]+)/) || [])[1] || '';
