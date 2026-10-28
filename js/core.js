@@ -20,7 +20,7 @@
       await load(base + 'mock.js');
       MPP.sb = window.MPP_MOCK.create();
     } else {
-      await load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js');
+      await load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js');
       MPP.sb = window.supabase.createClient(C.supabaseUrl, C.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
     }
   })();

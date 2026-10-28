@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Test de la bibliothèque Supabase</title>
+<body>
+<pre id="out">en cours…</pre>
+<script>
+// Vérifie que la version de supabase-js utilisée par core.js se charge, expose bien createClient et accepte une clé « publishable ».
+const url = [...document.scripts].length && 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js';
+const s = document.createElement('script'); s.src = url;
+s.onload = () => {
+  const r = { charge: true, createClient: typeof window.supabase.createClient };
+  try {
+    const c = window.supabase.createClient('https://exemple.supabase.co', 'sb_publishable_cleDeTest', { auth: { persistSession: false } });
+    r.client = ['from', 'rpc', 'auth', 'storage'].every((k) => k in c);
+    r.mfa = typeof c.auth.mfa.enroll;
+  } catch (e) { r.erreur = e.message; }
+  document.getElementById('out').textContent = JSON.stringify(r);
+};
+s.onerror = () => { document.getElementById('out').textContent = JSON.stringify({ charge: false }); };
+document.head.appendChild(s);
+</script>
+</body>
