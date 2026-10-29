@@ -14,9 +14,29 @@
 // =====================================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.3";
 
+// Les clés sont fournies automatiquement par Supabase. Leur nom varie selon l'ancien système (service_role / anon)
+// ou le nouveau (secret / publishable) : on essaie les deux. Un secret « MPPE_SERVICE_KEY » / « MPPE_ANON_KEY »,
+// ajouté à la main dans Edge Functions > Secrets, a priorité si besoin.
+function cle(noms) {
+  for (const n of noms) {
+    const v = Deno.env.get(n);
+    if (!v) continue;
+    const t = String(v).trim();
+    if (t.startsWith("{")) {
+      try {
+        const o = JSON.parse(t);
+        const premiere = o.default || Object.values(o)[0];
+        if (premiere) return String(premiere);
+      } catch (_e) { /* format inattendu : on essaie le nom suivant */ }
+    } else {
+      return t;
+    }
+  }
+  return null;
+}
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SERVICE_KEY = cle(["MPPE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SECRET_KEYS"]);
+const ANON_KEY = cle(["MPPE_ANON_KEY", "SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEYS"]);
 // Adresse du dashboard : destination des liens reçus par e-mail (à garder dans la liste des « Redirect URLs » de Supabase)
 const DASH_URL = (Deno.env.get("DASH_URL") || "https://mppe-dash.vercel.app").replace(/\/+$/, "");
 
@@ -65,6 +85,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, message: "Méthode non autorisée." }, 405);
 
   try {
+    if (!SUPABASE_URL || !SERVICE_KEY) {
+      return json({ ok: false, message: "Clé serveur introuvable : ajoutez le secret MPPE_SERVICE_KEY dans Edge Functions > Secrets (voir LISEZMOI)." }, 500);
+    }
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
     // 1. L'appelant doit être le président, connecté (avec double authentification si elle est exigée)
@@ -115,7 +138,7 @@ Deno.serve(async (req) => {
       if (!existant) return json({ ok: false, message: "Invitation impossible : " + ((inv.error && inv.error.message) || "erreur inconnue") }, 400);
       userId = existant.id;
       mode = "recuperation";
-      const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+      const anon = createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
       const r = await anon.auth.resetPasswordForEmail(email, { redirectTo });
       envoye = !r.error;
     }

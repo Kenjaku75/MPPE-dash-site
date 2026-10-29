@@ -33,7 +33,9 @@ function setup(over) {
   Object.keys(tokens).forEach((n) => { byRaw[tok(n)] = tokens[n]; });
 
   const rows = (t) => (t === 'admins' ? db.admins : t === 'parametres' ? db.parametres : []);
-  function createClient() {
+  db.clientKeys = [];
+  function createClient(_url, key) {
+    db.clientKeys.push(key);
     return {
       auth: {
         getUser: async (token) => (byRaw[token] ? { data: { user: byRaw[token].user }, error: null } : { data: null, error: { message: 'jeton invalide' } }),
@@ -60,9 +62,9 @@ function setup(over) {
     };
   }
   let handler;
-  const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'srv', SUPABASE_ANON_KEY: 'anon' };
+  const env = Object.assign({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'srv', SUPABASE_ANON_KEY: 'anon' }, over.env || {});
   globalThis.__createClient = createClient;
-  new Function('Deno', SRC)({ env: { get: (k) => (k in env ? env[k] : undefined) }, serve: (fn) => { handler = fn; } });
+  new Function('Deno', SRC)({ env: { get: (k) => (env[k] == null ? undefined : env[k]) }, serve: (fn) => { handler = fn; } });
   const call = async (method, tokenName, body) => {
     const headers = { 'Content-Type': 'application/json' };
     if (tokenName) headers.Authorization = 'Bearer ' + tok(tokenName);
@@ -159,6 +161,23 @@ test('invitation impossible et compte introuvable : erreur 400', async () => {
   assert.equal(r.status, 400);
   assert.match(r.data.message, /rate limit/i);
   assert.equal(db.upserts.length, 0);
+});
+
+test('nouvelles clés Supabase (secret / publishable, parfois au format JSON) et secret manuel prioritaire', async () => {
+  let s = setup({ env: { SUPABASE_SERVICE_ROLE_KEY: null, SUPABASE_ANON_KEY: null, SUPABASE_SECRET_KEYS: '{"default":"sb_secret_abc"}', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_xyz' } });
+  assert.equal((await s.call('POST', 'T-PRES2', OK)).status, 200);
+  assert.ok(s.db.clientKeys.includes('sb_secret_abc'));
+  s = setup({ env: { MPPE_SERVICE_KEY: 'manuel', SUPABASE_SERVICE_ROLE_KEY: 'ancienne' } });
+  assert.equal((await s.call('POST', 'T-PRES2', OK)).status, 200);
+  assert.ok(s.db.clientKeys.includes('manuel') && !s.db.clientKeys.includes('ancienne'));
+});
+
+test('aucune clé serveur disponible : message explicite, rien n\'est envoyé', async () => {
+  const s = setup({ env: { SUPABASE_SERVICE_ROLE_KEY: null } });
+  const r = await s.call('POST', 'T-PRES2', OK);
+  assert.equal(r.status, 500);
+  assert.match(r.data.message, /MPPE_SERVICE_KEY/);
+  assert.equal(s.db.invites.length, 0);
 });
 
 test("le compte du président est intouchable, même par le président", async () => {
