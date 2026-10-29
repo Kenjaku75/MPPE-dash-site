@@ -3,7 +3,7 @@
 -- Ne touche à aucune autre donnée.
 delete from public.signalements where type = 'idee' and cible_id in (select id from public.idees where titre = 'Test de mise en service');
 delete from public.idees where titre = 'Test de mise en service';
-delete from public.participants where nom = 'Verification' and prenom = 'Test';
+delete from public.participants where prenom = 'Test' and nom like 'Verificat%';
 delete from public.demandes_aide where message like 'Test de mise en service%';
 delete from public.benevoles where nom = 'Verification' and prenom = 'Test';
 delete from public.signalements where type = 'avis' and cible_id in (select id from public.avis_bureau where commentaire = 'Test de mise en service');
