@@ -104,6 +104,14 @@ const rpc = (name, args) => W().MPP.sb.rpc(name, args).then((r) => r.data);
     click($('#add')); await waitFor(() => $('.modal form')); f = $('.modal form'); type(f.prenom, 'Nouveau'); type(f.nom, 'Membre'); type(f.poste, 'Chargé de test'); submit(f);
     log('équipe : membre ajouté', await waitFor(() => /Chargé de test/.test($('#list').innerText)), '');
     await open('equipe.html'); log('équipe : membre visible côté public', /Nouveau Membre/.test($('#app').innerText), '');
+
+    // J. Le président invite un membre par e-mail depuis Paramètres > Comptes du bureau
+    await open('admin/parametres.html', 'president');
+    const af = $('#af'); type(af.email, 'nouvelle.recrue@exemple.com'); type(af.role, 'moderateur'); type(af.nom, 'Nouvelle Recrue'); type(af.poste, 'Modératrice'); submit(af);
+    log('comptes : invitation par e-mail depuis le dashboard', await waitFor(() => /nouvelle\.recrue@exemple\.com/.test($('#staff').innerText)), '');
+    log("comptes : bouton « Renvoyer l'invitation » présent", !!D().querySelector('[data-resend="nouvelle.recrue@exemple.com"]'), '');
+    await open('admin/parametres.html', 'bureau');
+    log('comptes : la gestion des comptes est réservée au président', !$('#af') && !D().querySelector('#staff .panel'), '');
   } catch (e) { log('EXCEPTION', false, e && (e.stack || e.message)); }
   const bad = results.filter((r) => !r.ok);
   document.getElementById('out').textContent = JSON.stringify({ total: results.length, echecs: bad.length, resultats: results });

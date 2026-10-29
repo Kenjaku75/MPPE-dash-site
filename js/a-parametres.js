@@ -46,19 +46,38 @@ MPP.admin.page({ nav: 'parametres', need: 'admin' }, async ({ sb, S, me, el }) =
   if (d1 && d2) d1.addEventListener('change', () => { if (d1.value && (!d2.value || d2.value < d1.value)) { const d = MPP.parseDate(d1.value); d.setDate(d.getDate() + 2); d2.value = MPP.ymd(d); } });
 
   if (isPres) await staff();
+
+  /** Invite un membre par e-mail (fonction serveur « inviter-membre ») : le compte est créé, l'e-mail part, le rôle est attribué. */
+  async function inviteStaff(v) {
+    const { data, error } = await sb.functions.invoke('inviter-membre', { body: v });
+    if (error) {
+      let m = error.message || 'Erreur';
+      try { if (error.context && typeof error.context.json === 'function') { const j = await error.context.json(); if (j && j.message) m = j.message; } } catch (e) { /* ignore */ }
+      if (/not found|introuvable|Failed to send|fetch/i.test(m)) m = "La fonction d'invitation n'est pas encore installée sur la base (voir LISEZMOI : « Installer la fonction d'invitation »).";
+      throw new Error(m);
+    }
+    if (!data || !data.ok) throw new Error((data && data.message) || 'Refusé');
+    return data;
+  }
+
   async function staff() {
     const rows = await MPP.q(sb.from('admins').select('*').order('created_at'));
-    $('#staff').innerHTML = '<div class="panel"><h2>Comptes du bureau (président)</h2><p class="sub">Le compte du président est protégé : aucun autre compte ne peut le supprimer, le masquer, changer son rôle ni réinitialiser son accès. Pour ajouter un membre, créez d\'abord son compte (Supabase → Authentication → Users → Invite), puis attribuez-lui un rôle ici.</p>' +
+    $('#staff').innerHTML = '<div class="panel"><h2>Comptes du bureau (président)</h2><p class="sub">Pour ajouter un membre : saisissez son e-mail, choisissez son rôle et cliquez sur « Inviter par e-mail ». Il reçoit un message, choisit <b>lui-même</b> son mot de passe (vous ne le connaissez jamais), puis active la double authentification. Le compte du président est protégé : personne d\'autre ne peut le supprimer, changer son rôle ni réinitialiser son accès.</p>' +
       A.tbl([{ l: 'Compte', fn: (r) => '<b>' + esc(r.nom_affiche || r.email) + '</b><div class="small muted">' + esc(r.email) + (r.poste ? ' · ' + esc(r.poste) : '') + '</div>', cls: 'wide' }, { l: 'Rôle', fn: (r) => (r.role === 'president' ? '<span class="chip gold">' + icon('shield') + ' Président</span>' : '<select data-role="' + esc(r.email) + '" style="min-height:36px;width:auto"><option value="admin"' + (r.role === 'admin' ? ' selected' : '') + '>Administrateur</option><option value="moderateur"' + (r.role === 'moderateur' ? ' selected' : '') + '>Modérateur</option></select>') }],
-        rows, (r) => (r.role === 'president' ? '' : A.btn('Retirer', 'data-rm="' + r.user_id + '"', 'btn-ghost', 'trash') + A.btn('Passer le rôle de président', 'data-pass="' + r.user_id + '"')), 'Aucun compte.') +
-      '<form id="af" class="toolbar" style="margin-top:14px" novalidate><input name="email" type="email" required placeholder="E-mail du compte" class="grow"><select name="role"><option value="moderateur">Modérateur</option><option value="admin">Administrateur</option></select><input name="nom" placeholder="Nom affiché"><input name="poste" placeholder="Poste"><button class="btn btn-sm" type="submit">' + icon('plus') + ' Attribuer</button></form></div>';
-    $('#af').addEventListener('submit', async (e) => { e.preventDefault(); const f = e.target; if (!f.checkValidity()) return f.reportValidity(); try { const r = await MPP.rpc('staff_add', { p_email: f.email.value, p_role: f.role.value, p_nom: f.nom.value || null, p_poste: f.poste.value || null }); if (!r.ok) throw new Error(r.message); MPP.toast('Compte enregistré', 'ok'); staff(); } catch (err) { A.err(err); } });
+        rows, (r) => (r.role === 'president' ? '' : A.btn("Renvoyer l'invitation", 'data-resend="' + esc(r.email) + '" data-rrole="' + esc(r.role) + '"', 'btn-ghost', 'send') + A.btn('Retirer', 'data-rm="' + r.user_id + '"', 'btn-ghost', 'trash') + A.btn('Passer le rôle de président', 'data-pass="' + r.user_id + '"')), 'Aucun compte.') +
+      '<h3 style="font-size:1rem;margin:18px 0 8px">Inviter un nouveau membre</h3><form id="af" class="toolbar" novalidate><input name="email" type="email" required placeholder="E-mail de la personne" class="grow"><select name="role"><option value="moderateur">Modérateur</option><option value="admin">Administrateur</option></select><input name="nom" placeholder="Nom affiché"><input name="poste" placeholder="Poste"><button class="btn btn-sm btn-primary" type="submit">' + icon('send') + ' Inviter par e-mail</button></form><p class="small muted" style="margin:4px 0 0">Modérateur : chat et idées signalées seulement. Administrateur : tout le dashboard, sauf la gestion des comptes, le journal d\'audit et les promesses de vote.</p></div>';
+    $('#af').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = e.target; if (!f.checkValidity()) return f.reportValidity();
+      const btn = $('button[type=submit]', f); MPP.busy(btn, true, 'Envoi…');
+      try { const r = await inviteStaff({ email: f.email.value.trim(), role: f.role.value, nom: f.nom.value.trim(), poste: f.poste.value.trim() }); MPP.toast(r.message || 'Invitation envoyée', 'ok'); await staff(); } catch (err) { A.err(err); MPP.busy(btn, false); }
+    });
   }
   $('#staff').addEventListener('change', async (e) => { const t = e.target.closest('[data-role]'); if (!t) return; try { const r = await MPP.rpc('staff_add', { p_email: t.dataset.role, p_role: t.value }); if (!r.ok) throw new Error(r.message); MPP.toast('Rôle modifié', 'ok'); } catch (err) { A.err(err); staff(); } });
   $('#staff').addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     try {
-      if (b.dataset.rm && await MPP.confirm('Retirer ce compte du dashboard ?', { ok: 'Retirer', danger: true })) { const r = await MPP.rpc('staff_remove', { p_user: b.dataset.rm }); if (!r.ok) throw new Error(r.message); MPP.toast('Compte retiré'); staff(); }
+      if (b.dataset.resend) { const r = await inviteStaff({ email: b.dataset.resend, role: b.dataset.rrole }); MPP.toast(r.message || 'Invitation renvoyée', 'ok'); }
+      else if (b.dataset.rm && await MPP.confirm('Retirer ce compte du dashboard ?', { ok: 'Retirer', danger: true })) { const r = await MPP.rpc('staff_remove', { p_user: b.dataset.rm }); if (!r.ok) throw new Error(r.message); MPP.toast('Compte retiré'); staff(); }
       else if (b.dataset.pass) { const w = await MPP.confirm('Passation : vous deviendrez simple administrateur et ce compte deviendra président. Tapez PASSATION pour confirmer.', { input: 'PASSATION', ok: 'Transmettre', danger: true }); if (w !== 'PASSATION') return; const r = await MPP.rpc('transfer_presidency', { p_to: b.dataset.pass }); if (!r.ok) throw new Error(r.message); MPP.toast('Passation effectuée', 'ok'); setTimeout(() => location.reload(), 800); }
     } catch (err) { A.err(err); }
   });

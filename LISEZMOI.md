@@ -19,7 +19,15 @@ Double-cliquez sur **`lancer-demo.bat`** (nécessite Python). Le site s'ouvre su
 2. **Comptes** — Supabase → Authentication : désactivez les inscriptions publiques (*Allow new users to sign up*), activez la **MFA TOTP**,
    puis invitez l'e-mail du président (celui que vous avez mis à la ligne `president_email` au début de `backend/schema.sql`, à modifier **avant** d'exécuter le script) : ce compte devient automatiquement **président** à sa création
    (si le compte existait déjà : se connecter puis exécuter `select public.claim_president();`).
-   Les autres membres : les inviter, puis leur attribuer un rôle dans *Dashboard → Paramètres → Comptes du bureau*.
+   Les autres membres : le **président les invite par e-mail depuis le dashboard** (*Paramètres → Comptes du bureau → Inviter par e-mail*), une fois la fonction d'invitation installée (voir ci-dessous).
+   Chaque personne choisit elle-même son mot de passe, puis active la double authentification : personne ne connaît le mot de passe d'un autre.
+
+   **Installer la fonction d'invitation (une seule fois).** L'envoi d'une invitation exige la clé secrète de Supabase, qui ne doit jamais se trouver dans le site : elle reste dans une petite fonction serveur.
+   1. Supabase → **Edge Functions** → *Deploy a new function* → *Via Editor*. Nom exact : `inviter-membre`.
+   2. Collez tout le contenu de `backend/functions/inviter-membre/index.ts` puis *Deploy*.
+   3. Ouvrez la fonction → *Details* → désactivez **Verify JWT** (la fonction vérifie elle-même que l'appelant est le président et qu'il a validé la double authentification).
+   4. Supabase → Authentication → *URL Configuration* : `https://adresse-du-dashboard/**` doit figurer dans les *Redirect URLs*. Si l'adresse du dashboard change, ajoutez aussi le secret `DASH_URL` de la fonction.
+   Sans cette fonction, le dashboard affiche « La fonction d'invitation n'est pas encore installée ». L'envoi d'e-mails du plan gratuit est limité à quelques messages par heure.
 3. **Configuration** — dans `js/config.js`, renseignez `supabaseUrl` et `supabaseKey` (clé *anon / publishable*, **jamais** la clé `service_role`).
    Tant que ces deux champs sont vides, le site reste en mode démo.
 4. **Hébergement : le site public et le dashboard sont deux déploiements séparés** (deux adresses), qui partagent la **même base de données**
@@ -72,7 +80,7 @@ Le fuseau du serveur est UTC, identique à Ouagadougou (UTC+0).
 ## 6. Outils et tests
 
 ```
-node --test tests/mock.test.js     # 20 tests de la logique métier (mode démo)
+node --test tests/mock.test.js tests/edge-inviter.test.js   # 30 tests : logique métier (démo) et fonction d'invitation
 node tools/build-pages.js          # régénère les 43 pages HTML
 node tools/make-seed.js            # régénère backend/seed.sql depuis js/seed-data.js
 node tools/set-domain.js <url>     # adresse publique pour les aperçus WhatsApp

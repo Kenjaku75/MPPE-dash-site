@@ -809,6 +809,15 @@
         });
       },
       auth, storage,
+      // Fonctions serveur : en démo, « inviter-membre » crée le compte localement (aucun e-mail réel n'est envoyé)
+      functions: {
+        async invoke(name, opts) {
+          if (name !== 'inviter-membre') return { data: null, error: { message: 'Function not found' } };
+          const b = (opts && opts.body) || {};
+          const r = (await client.rpc('staff_add', { p_email: b.email, p_role: b.role, p_nom: b.nom || null, p_poste: b.poste || null })).data;
+          return { data: r && r.ok ? { ok: true, mode: 'invitation', envoye: true, message: 'Invitation envoyée à ' + String(b.email).toLowerCase() + ' (démo : aucun e-mail réel).' } : r, error: null };
+        }
+      },
       __reset: M.reset, __db: M.db, __sessionRole: () => { load(); return roleOf(); }
     };
     load();
